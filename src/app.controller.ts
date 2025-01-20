@@ -1,4 +1,3 @@
-import { HttpService } from '@nestjs/axios';
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { SupabaseService } from './supabase/supabase.service';
@@ -8,20 +7,49 @@ export class AppController {
 	constructor(
 		private readonly appService: AppService,
 		private readonly supabaseService: SupabaseService,
-		private readonly httpService: HttpService,
 	) {}
 
 	@Get()
 	async getHello() {
-		try {
-			const response = await this.httpService.axiosRef.get(
-				`https://suiscan.xyz/testnet/object/0x0b8c0ef40d9f27a02fdd7cb323d3e89f50e6cd085730fd36be63c587af7053de/fields`,
-			);
-			return response.data; // Возвращаем полученные данные
-		} catch (error) {
-			console.error('Error fetching Sui object:', error);
-			throw new Error('Unable to fetch object from Sui');
-		}
+		const query = `
+			query GetObject {
+					object(address: "0x0b8c0ef40d9f27a02fdd7cb323d3e89f50e6cd085730fd36be63c587af7053de") {
+						version
+						storageRebate
+						asMoveObject {
+							contents {
+								json
+							}
+						}
+					}
+				}
+		`;
+
+		const res = fetch('https://sui-testnet.mystenlabs.com/graphql', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				query,
+				// variables,
+			}),
+		})
+			.then((response) => {
+				if (!response.ok) {
+					throw new Error(`HTTP error! Status: ${response.status}`);
+				}
+				return response.json();
+			})
+			.then((data) => {
+				console.log('GraphQL response:', data);
+				return data;
+			})
+			.catch((error) => {
+				console.error('Error:', error);
+			});
+
+		return res;
 
 		return this.appService.getHello();
 	}

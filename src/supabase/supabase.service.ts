@@ -13,4 +13,6 @@ export class SupabaseService {
 		this.supabase = createClient(supabaseUrl, supabaseKey);
 		// this.logger.log('Supabase client initialized');
 	}
+
+
 }
