@@ -57,10 +57,10 @@ export class AppController {
 	@Get('test')
 	async getTest() {
 		// const { data, error } = await this.supabaseService.supabase.from('table').select('*');
-		const { data, error } = await this.supabaseService.supabase.from('table').insert({ text: 'asd' });
+		// const { data, error } = await this.supabaseService.supabase.from('table').insert({ text: 'asd' });
 
-		if (error) throw new Error(error.message);
-		console.log(data);
-		return data;
+		// if (error) throw new Error(error.message);
+		// console.log(data);
+		// return data;
 	}
 }
