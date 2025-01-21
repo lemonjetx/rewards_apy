@@ -20,19 +20,7 @@ export class TrackerService {
 		this.supabase = supabaseService.getClient();
 		this.suiGraphQLUrl = configService.get<string>('SUI_GRAPHQL_URL');
 		this.vaultAddress = configService.get<string>('SUI_VAULT_ADDRESS');
-		this.query = `
-			query GetObject {
-					object(address: "${this.vaultAddress}") {
-						version
-						storageRebate
-						asMoveObject {
-							contents {
-								json
-							}
-						}
-					}
-				}
-		`;
+		this.query = getObjectQuery(this.vaultAddress);
 	}
 
 	@Cron('1 * * * * *')
