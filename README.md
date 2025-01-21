@@ -27,6 +27,10 @@ SUI_VAULT_ADDRESS=
 SUI_GRAPHQL_URL="https://sui-testnet.mystenlabs.com/graphql"
 ```
 
+### Database
+
+The database schema is defined in the `schema.sql` file
+
 ### Adjust Query Schedule
 
 To change the scheduling period for blockchain queries, edit the `TRACKER_CRON_SCHEDULE` constant in
