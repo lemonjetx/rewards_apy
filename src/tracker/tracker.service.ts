@@ -35,7 +35,7 @@ export class TrackerService {
 
 			await this.saveVaultData(vault);
 
-			await this.calculateAPY(vault.tokenPrice);
+			await this.calculateAndSaveAPY(vault.tokenPrice);
 		} catch (error) {
 			this.logger.error('Failed to fetch data', error.message);
 		}
@@ -88,54 +88,55 @@ export class TrackerService {
 		}
 	}
 
-	private async calculateAPY(tokenPrice: number) {
+	private async calculateAndSaveAPY(tokenPrice: number) {
 		const endDate = new Date();
 		const startDateLimit = new Date(endDate);
-		startDateLimit.setDate(startDateLimit.getDate() - 365); // Ограничение на 365 дней
+		startDateLimit.setDate(startDateLimit.getDate() - 365);
 
-		const { data: oldestData, error: oldestError } = await this.supabase
+		const oldestData = await this.fetchOldestVaultData(startDateLimit);
+
+		const startDate = new Date(oldestData.date);
+		const daysCount = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+
+		const apy = this.calculateAPYValue(oldestData.token_price, tokenPrice, daysCount);
+
+		this.logger.log(`APY calculated: ${apy.toFixed(6)}% from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+		await this.saveAPYToDatabase(apy, startDate, endDate);
+	}
+
+	private async fetchOldestVaultData(dateLimit: Date) {
+		const { data, error } = await this.supabase
 			.from('historical_data')
 			.select('date, token_price')
-			.gte('date', startDateLimit.toISOString().split('T')[0])
+			.gte('date', dateLimit.toISOString().split('T')[0])
 			.order('date', { ascending: true })
 			.limit(1)
 			.single();
 
-		if (oldestError || !oldestData) {
-			this.logger.error(
-				'Failed to fetch the oldest data within 365 days:',
-				oldestError?.message || 'No data available',
-			);
+		if (error || !data) {
+			this.logger.error('Failed to fetch the oldest data within 365 days:', error?.message || 'No data available');
 			throw new Error('Insufficient historical data for APY calculation');
 		}
 
-		const startDate = new Date(oldestData.date);
-		const daysCount = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24); // Количество дней между датами
+		return data;
+	}
 
-		const prevTokenPrice = oldestData.token_price;
-
-		if (!prevTokenPrice || prevTokenPrice <= 0) {
-			this.logger.error('Invalid previous token price:', prevTokenPrice);
-			throw new Error('Invalid token price for APY calculation');
-		}
-
-		const growth = (tokenPrice - prevTokenPrice) / prevTokenPrice;
-
-		const apy = (Math.pow(1 + growth / daysCount, daysCount) - 1) * 100;
-
-		this.logger.log(`APY calculated: ${apy.toFixed(6)}% from ${startDate.toISOString()} to ${endDate.toISOString()}`);
-
-		const { error: insertError } = await this.supabase.from('apy').insert({
+	private async saveAPYToDatabase(apy: number, startDate: Date, endDate: Date) {
+		const { error } = await this.supabase.from('apy').insert({
 			apy,
 			start_date: startDate.toISOString().split('T')[0],
 			end_date: endDate.toISOString().split('T')[0],
 		});
 
-		if (insertError) {
-			this.logger.error('Failed to save APY:', insertError.message);
+		if (error) {
+			this.logger.error('Failed to save APY:', error.message);
 			throw new Error('Database error while saving APY');
 		}
+	}
 
-		return apy;
+	private calculateAPYValue(prevTokenPrice: number, currentTokenPrice: number, daysCount: number) {
+		const growth = (currentTokenPrice - prevTokenPrice) / prevTokenPrice;
+		return (Math.pow(1 + growth / daysCount, daysCount) - 1) * 100;
 	}
 }
