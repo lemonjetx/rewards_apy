@@ -57,9 +57,32 @@ export class TrackerService {
 			const assetPool = response.data.object.asMoveObject.contents.json.asset_pool.value;
 			const totalSupply = response.data.object.asMoveObject.contents.json.shares_treasury.total_supply.value;
 			const feePool = response.data.object.asMoveObject.contents.json.fee_pool.value;
-			console.log(assetPool, totalSupply, feePool, assetPool / totalSupply);
+			const tokenPrice = assetPool / totalSupply;
+
+			const { error } = await this.supabase.from('historical_data').insert({
+				asset_pool: assetPool,
+				fee_pool: feePool,
+				total_supply: totalSupply,
+				token_price: tokenPrice,
+			});
+
+			if (error) {
+				this.logger.error('Failed to save vault data:', error.message);
+			} else {
+				this.logger.log(
+					`Vault data saved!
+					asset_pool: ${assetPool},
+					fee_pool: ${feePool},
+					total_supply: ${totalSupply},
+					token_price: ${tokenPrice}.`,
+				);
+			}
 		} catch (error) {
 			this.logger.error('Failed to fetch data', error.message);
 		}
+	}
+
+	private async calculateAPY(tokenPrice: number) {
+		return 0;
 	}
 }

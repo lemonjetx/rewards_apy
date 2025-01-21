@@ -11,7 +11,6 @@ export class SupabaseService {
 		const supabaseKey = this.configService.get<string>('SUPABASE_KEY');
 
 		this.supabase = createClient(supabaseUrl, supabaseKey);
-		// this.logger.log('Supabase client initialized');
 	}
 
 	public getClient() {
