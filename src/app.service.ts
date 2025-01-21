@@ -11,13 +11,18 @@ export class AppService {
 	}
 
 	async getApy() {
-		const { data, error } = await this.supabase.from('apy').select('*').order('id', { ascending: false }).limit(1);
+		const { data, error } = await this.supabase
+			.from('apy')
+			.select('*')
+			.order('id', { ascending: false })
+			.limit(1)
+			.single();
 
-		if (error || data.length === 0) {
+		if (error || data === null) {
 			console.log(error);
 			return null;
 		}
 
-		return data[0].apy as number;
+		return data.apy as number;
 	}
 }

@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { IVault } from '../data/abstractions/IVault';
-import { SupabaseService } from '../supabase/supabase.service';
+import { IVault } from '@/data/abstractions/IVault';
+import { TRACKER_CRON_SCHEDULE } from '@/data/constants';
+import { getObjectQuery } from '@/data/queries/get-object.query';
+import { SupabaseService } from '@/supabase/supabase.service';
 
 @Injectable()
 export class TrackerService {
@@ -23,7 +25,7 @@ export class TrackerService {
 		this.query = getObjectQuery(this.vaultAddress);
 	}
 
-	@Cron('1 * * * * *')
+	@Cron(TRACKER_CRON_SCHEDULE)
 	async fetchVaultDataAndAPY() {
 		try {
 			this.logger.log('Fetching token price...');
@@ -32,6 +34,8 @@ export class TrackerService {
 			const vault = this.processResponse(response);
 
 			await this.saveVaultData(vault);
+
+			await this.calculateAPY(vault.tokenPrice);
 		} catch (error) {
 			this.logger.error('Failed to fetch data', error.message);
 		}
@@ -85,6 +89,53 @@ export class TrackerService {
 	}
 
 	private async calculateAPY(tokenPrice: number) {
-		return 0;
+		const endDate = new Date();
+		const startDateLimit = new Date(endDate);
+		startDateLimit.setDate(startDateLimit.getDate() - 365); // Ограничение на 365 дней
+
+		const { data: oldestData, error: oldestError } = await this.supabase
+			.from('historical_data')
+			.select('date, token_price')
+			.gte('date', startDateLimit.toISOString().split('T')[0])
+			.order('date', { ascending: true })
+			.limit(1)
+			.single();
+
+		if (oldestError || !oldestData) {
+			this.logger.error(
+				'Failed to fetch the oldest data within 365 days:',
+				oldestError?.message || 'No data available',
+			);
+			throw new Error('Insufficient historical data for APY calculation');
+		}
+
+		const startDate = new Date(oldestData.date);
+		const daysCount = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24); // Количество дней между датами
+
+		const prevTokenPrice = oldestData.token_price;
+
+		if (!prevTokenPrice || prevTokenPrice <= 0) {
+			this.logger.error('Invalid previous token price:', prevTokenPrice);
+			throw new Error('Invalid token price for APY calculation');
+		}
+
+		const growth = (tokenPrice - prevTokenPrice) / prevTokenPrice;
+
+		const apy = (Math.pow(1 + growth / daysCount, daysCount) - 1) * 100;
+
+		this.logger.log(`APY calculated: ${apy.toFixed(6)}% from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+		const { error: insertError } = await this.supabase.from('apy').insert({
+			apy,
+			start_date: startDate.toISOString().split('T')[0],
+			end_date: endDate.toISOString().split('T')[0],
+		});
+
+		if (insertError) {
+			this.logger.error('Failed to save APY:', insertError.message);
+			throw new Error('Database error while saving APY');
+		}
+
+		return apy;
 	}
 }

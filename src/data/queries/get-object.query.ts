@@ -1,4 +1,4 @@
-const getObjectQuery = (address: string): string => {
+export const getObjectQuery = (address: string): string => {
 	return `
 		query GetObject {
 			object(address: "${address}") {
