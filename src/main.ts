@@ -6,8 +6,10 @@ async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
 	const config = app.get(ConfigService);
 
+	const allowedOrigins = config.getOrThrow<string>('APPLICATION_ORIGIN').split(',');
+
 	app.enableCors({
-		origin: config.getOrThrow<string>('APPLICATION_ORIGIN'),
+		origin: allowedOrigins,
 		credentials: true,
 		exposedHeaders: ['set-cookie'],
 	});
