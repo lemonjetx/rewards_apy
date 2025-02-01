@@ -1,16 +1,17 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { AppService } from './app.service';
-import { SupabaseService } from './supabase/supabase.service';
 
 @Controller()
 export class AppController {
-	constructor(
-		private readonly appService: AppService,
-		private readonly supabaseService: SupabaseService,
-	) {}
+	constructor(private readonly appService: AppService) {}
 
-	@Get('apy')
-	async getApy() {
-		return await this.appService.getApy();
+	@Get('pools/:poolName/apy')
+	async getPoolApyByName(@Param('poolName') poolName: string) {
+		return await this.appService.getPoolApyByName(poolName);
+	}
+
+	@Get('pools/apy')
+	async getPoolsApy() {
+		return await this.appService.getPoolsApy();
 	}
 }
