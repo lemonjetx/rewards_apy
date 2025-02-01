@@ -1,1 +1,1 @@
-export const TRACKER_CRON_SCHEDULE = '*/15 * * * * *';
+export const TRACKER_CRON_SCHEDULE = '0 0 * * *';
