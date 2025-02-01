@@ -1,4 +1,4 @@
-export interface IVault {
+export interface IPoolData {
 	assetPool: number;
 	totalSupply: number;
 	feePool: number;
