@@ -40,8 +40,8 @@ export class TrackerService {
 					const response = await this.fetchPoolData(pool.address);
 					const processResponse = this.processResponse(response);
 
-					await this.savePoolData(pool.id, processResponse);
-					await this.calculateAndSaveAPY(pool.id, processResponse.tokenPrice);
+					await this.savePoolData(pool, processResponse);
+					await this.calculateAndSaveAPY(pool, processResponse.tokenPrice);
 				} catch (error) {
 					this.logger.error(`Failed to fetch data for pool ${pool.name}:`, error);
 				}
@@ -83,9 +83,9 @@ export class TrackerService {
 		return { assetPool, totalSupply, feePool, tokenPrice };
 	}
 
-	private async savePoolData(poolId: number, vault: IPoolData) {
+	private async savePoolData(pool: IPool, vault: IPoolData) {
 		const { error } = await this.supabase.from('historical_data').insert({
-			pool_id: poolId,
+			pool_id: pool.id,
 			asset_pool: vault.assetPool,
 			fee_pool: vault.feePool,
 			total_supply: vault.totalSupply,
@@ -93,11 +93,11 @@ export class TrackerService {
 		});
 
 		if (error) {
-			this.logger.error('Failed to save vault data for pool ${poolId}:', error.message);
+			this.logger.error(`Failed to save vault data for pool ${pool.name}:`, error.message);
 			throw new Error('Database error');
 		} else {
 			this.logger.log(`
-				Vault data saved for pool ${poolId}
+				Vault data saved for pool ${pool.name}
 				asset_pool: ${vault.assetPool},
 				fee_pool: ${vault.feePool},
 				total_supply: ${vault.totalSupply},
@@ -106,53 +106,53 @@ export class TrackerService {
 		}
 	}
 
-	private async calculateAndSaveAPY(poolId: number, tokenPrice: number) {
+	private async calculateAndSaveAPY(pool: IPool, tokenPrice: number) {
 		const endDate = new Date();
 		const startDateLimit = new Date(endDate);
 		startDateLimit.setDate(startDateLimit.getDate() - 365);
 
-		const oldestData = await this.fetchOldestVaultData(poolId, startDateLimit);
+		const oldestData = await this.fetchOldestVaultData(pool, startDateLimit);
 
 		const startDate = new Date(oldestData.date);
 		const daysCount = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
 		const apy = this.calculateAPYValue(oldestData.token_price, tokenPrice, daysCount);
 
 		this.logger.log(
-			`APY calculated for pool ${poolId}: ${apy.toFixed(6)}% 
+			`APY calculated for pool ${pool.name}: ${apy.toFixed(6)}% 
 			from ${startDate.toISOString()} to ${endDate.toISOString()}`,
 		);
 
-		await this.saveAPYToDatabase(poolId, apy, startDate, endDate);
+		await this.saveAPYToDatabase(pool, apy, startDate, endDate);
 	}
 
-	private async fetchOldestVaultData(poolId: number, dateLimit: Date) {
+	private async fetchOldestVaultData(pool: IPool, dateLimit: Date) {
 		const { data, error } = await this.supabase
 			.from('historical_data')
 			.select('date, token_price')
-			.eq('pool_id', poolId)
+			.eq('pool_id', pool.id)
 			.gte('date', dateLimit.toISOString().split('T')[0])
 			.order('date', { ascending: true })
 			.limit(1)
 			.single();
 
 		if (error || !data) {
-			this.logger.error(`Failed to fetch oldest data for pool ${poolId}:`, error?.message || 'No data available');
+			this.logger.error(`Failed to fetch oldest data for pool ${pool.name}:`, error?.message || 'No data available');
 			throw new Error('Insufficient historical data for APY calculation');
 		}
 
 		return data;
 	}
 
-	private async saveAPYToDatabase(poolId: number, apy: number, startDate: Date, endDate: Date) {
+	private async saveAPYToDatabase(pool: IPool, apy: number, startDate: Date, endDate: Date) {
 		const { error } = await this.supabase.from('apy').insert({
-			pool_id: poolId,
+			pool_id: pool.id,
 			apy,
 			start_date: startDate.toISOString().split('T')[0],
 			end_date: endDate.toISOString().split('T')[0],
 		});
 
 		if (error) {
-			this.logger.error('Failed to save APY for pool ${poolId}:', error.message);
+			this.logger.error(`Failed to save APY for pool ${pool.name}:`, error.message);
 			throw new Error('Database error while saving APY');
 		}
 	}
