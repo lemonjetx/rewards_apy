@@ -23,13 +23,27 @@ APPLICATION_ORIGIN=http://localhost:3000,https://lemonjet.io/
 SUPABASE_URL=
 SUPABASE_KEY=
 
-SUI_VAULT_ADDRESS=
-SUI_GRAPHQL_URL="https://sui-testnet.mystenlabs.com/graphql"
+SUI_NETWORK=testnet
+SUI_GRAPHQL_URL=https://sui-testnet.mystenlabs.com/graphql
 ```
 
 ### Database
 
 The database schema is defined in the `schema.sql` file
+
+#### Required data in the `pools` table
+
+To enable APY and pools data lookup, the `pools` table must contain records.
+
+Example SQL for inserting data samples:
+
+```sql
+insert into pools (name, address)
+values ('SUI', '0x123...'),
+       ('USDC', '0x123...');
+```
+
+Without these entries, obtaining pool data and calculating APY will not work.
 
 ### Adjust Query Schedule
 
@@ -51,14 +65,37 @@ $ npm run start:prod
 
 ## API Endpoints
 
-### Get APY
+### Get APY by pool name
 
-- **Endpoint:** `GET http://localhost:4000/apy`
+- **Endpoint:** `GET /pools/:poolName/apy`
+- **Parameters:**
+    - `poolName` (string, required) — register is disregarded.
+- **Response Example:**
+
+```
+24.037792
+```
+
+### Get APY from all pools
+
+- **Endpoint:** `GET /pools/apy`
 - **Response Example:**
 
 ```json
-{
-  "apy": 1.94947
-}
+[
+  {
+    "pool_name": "SUI",
+    "pool_address": "0x0...",
+    "apy": 32.260836,
+    "start_date": "2024-01-01",
+    "end_date": "2025-01-01"
+  },
+  {
+    "pool_name": "USDC",
+    "pool_address": "0x0...",
+    "apy": -1.037792,
+    "start_date": "2024-01-01",
+    "end_date": "2025-01-01"
+  }
+]
 ```
-
