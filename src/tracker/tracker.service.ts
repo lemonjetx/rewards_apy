@@ -20,6 +20,8 @@ export class TrackerService {
 	) {
 		this.supabase = supabaseService.getClient();
 		this.suiGraphQLUrl = configService.get<string>('SUI_GRAPHQL_URL');
+
+		this.fetchPoolsDataAndAPY();
 	}
 
 	@Cron(TRACKER_CRON_SCHEDULE)
