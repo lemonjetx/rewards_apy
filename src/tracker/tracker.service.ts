@@ -77,9 +77,9 @@ export class TrackerService {
 	}
 
 	private processResponse(response: any): IPoolData {
-		const assetPool = response.data.object.asMoveObject.contents.json.asset_pool.value;
-		const totalSupply = response.data.object.asMoveObject.contents.json.shares_treasury.total_supply.value;
-		const feePool = response.data.object.asMoveObject.contents.json.fee_pool.value;
+		const assetPool = response.data.object.asMoveObject.contents.json.liquidity.value;
+		const totalSupply = response.data.object.asMoveObject.contents.json.shares_supply.value;
+		const feePool = 0;
 		const tokenPrice = assetPool / totalSupply;
 
 		return { assetPool, totalSupply, feePool, tokenPrice };
